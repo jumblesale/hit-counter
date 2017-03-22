@@ -23,9 +23,8 @@ def main():
 
 
 def watch(page, action):
-    log(page)
-    log(action())
     dir = str.encode(get_directory_of_file(page))
+    watched_page = page.split('/')[-1]
     log(dir)
     i = inotify.adapters.Inotify()
 
@@ -35,11 +34,8 @@ def watch(page, action):
         for event in i.event_gen():
             if event is not None:
                 (header, type_names, watch_path, filename) = event
-                if 'IN_READ' in type_names and filename == page:
+                if 'IN_OPEN' in type_names and filename == str.encode(watched_page):
                     action()
-                log("WD=(%d) MASK=(%d) COOKIE=(%d) LEN=(%d) MASK->NAMES=%s WATCH-PATH=[%s] FILENAME=[%s]" %
-                    (header.wd, header.mask, header.cookie, header.len, type_names,
-                     watch_path.decode('utf-8'), filename.decode('utf-8')))
     finally:
         i.remove_watch(dir)
 
