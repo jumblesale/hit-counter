@@ -3,6 +3,7 @@ import os.path
 import sys
 import inotify.adapters
 from functools import partial
+import time
 
 
 LOGGING_ENABLED = True
@@ -22,7 +23,9 @@ def main():
     if validate_arguments(page, count_file) is False:
         sys.exit(-1)
     action = partial(on_file_read, count_file, page)
-    watch(page, action)
+    while True:
+        watch(page, action)
+        time.sleep(1)
 
 
 def watch(page, action):
@@ -37,12 +40,15 @@ def watch(page, action):
             if event is not None:
                 (header, type_names, watch_path, filename) = event
                 if 'IN_OPEN' in type_names and filename == str.encode(watched_page):
-                    action()
+                    i.remove_watch(dir)
+                    break
     finally:
         i.remove_watch(dir)
+    action()
 
 
 def on_file_read(count_file, html_page):
+    log("file was read")
     count = update_count_file(count_file)
     update_html(html_page, count)
 
@@ -52,10 +58,12 @@ def update_count_file(path):
         try:
             existing = int(f.read())
         except ValueError:
-            existing = 0
+            existing = 1
+    new_count = existing + 1
+    log("count was {0}, now {1}".format(existing, new_count))
     with open(path, 'w') as f:
-        f.write(str(existing + 1))
-    return existing + 1
+        f.write(str(new_count))
+    return new_count
 
 
 def update_html(path, count):
@@ -97,7 +105,4 @@ def log(msg):
 
 
 if __name__ == "__main__":
-    count_file = './count_file'
-    page = './page.html'
-    action = partial(on_file_read, count_file, page)
-    action()
+    main()
